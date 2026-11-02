@@ -1,3 +1,4 @@
+find . -not -path "./.git/*" -type f | head -n 100
 name: Unzip and build mod
 
 on:
