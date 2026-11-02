@@ -1,0 +1,54 @@
+name: Unzip and build mod
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      MOD_DIR: mod
+      OUT_DIR: dist
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and unzip mushroom-mod.zip
+        run: |
+          ZIP=$(find . -name "mushroom-mod.zip" -not -path "./.git/*" | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "mushroom-mod.zip не найден в репозитории"
+            exit 1
+          fi
+          echo "Найден архив: $ZIP"
+          rm -rf "$MOD_DIR"
+          unzip -q "$ZIP" -d "$MOD_DIR"
+          test -f "$MOD_DIR/build.gradle" || { echo "В архиве нет build.gradle"; exit 1; }
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle 8.8
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.8
+
+      - name: Build mod
+        working-directory: mod
+        run: gradle build --no-daemon
+
+      - name: Copy jar to dist
+        run: |
+          mkdir -p "$OUT_DIR"
+          cp mod/build/libs/*.jar "$OUT_DIR"/
+          ls -la "$OUT_DIR"
+
+      - name: Upload jar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mushroom-mod
+          path: dist/*.jar
